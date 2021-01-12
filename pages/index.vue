@@ -1,68 +1,167 @@
 <template>
   <div class="container">
-    <div>
-      <Logo />
-      <h1 class="title">investment-calculator</h1>
-      <div class="links">
-        <a
-          href="https://nuxtjs.org/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="button--green"
-        >
-          Documentation
-        </a>
-        <a
-          href="https://github.com/nuxt/nuxt.js"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="button--grey"
-        >
-          GitHub
-        </a>
+    <form class="md:flex mt-3 shadow-sm rounded-xl border p-4">
+      <div class="input-group md:mb-0 mb-4 mr-0 md:mr-4">
+        <input
+          id="startBalance"
+          v-model.lazy="startBalance"
+          placeholder="Starting Amount (4500)"
+          class="form-control"
+          inputmode="numeric"
+          type="text"
+        />
+        <span class="input-group-text" v-text="'$'" />
       </div>
-    </div>
+
+      <div class="input-group md:mb-0 mb-4 mr-0 md:mr-4">
+        <input
+          id="rateOfReturn"
+          v-model.lazy="rateOfReturn"
+          placeholder="Rate of Return (20)"
+          class="form-control"
+          inputmode="numeric"
+          type="text"
+        />
+        <span class="input-group-text" v-text="'%'" />
+      </div>
+
+      <div class="input-group md:mb-0 mb-4 mr-0 md:mr-4">
+        <input
+          id="yearsToGrow"
+          v-model.lazy="yearsToGrow"
+          placeholder="Years to Grow"
+          class="form-control"
+          inputmode="numeric"
+          type="text"
+        />
+        <span class="input-group-text" v-text="'Years'" />
+      </div>
+      <button
+        type="button"
+        class="btn btn-primary md:mb-0 mb-4 mr-0 md:mr-4"
+        @click="onSubmit"
+      >
+        Calculate
+      </button>
+    </form>
+
+    <ul v-if="store">
+      <li v-for="result in store" :key="result.year">
+        <div>
+          <span v-text="`Year: ${result.year}`" />
+          <span
+            v-text="
+              `Starting Amount: ${new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(result.startBalance)}`
+            "
+          />
+          <span
+            v-text="
+              `Interest Earned: ${new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(result.interestEarned)}`
+            "
+          />
+          <span
+            v-text="
+              `Total Interest Earned: ${new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(result.totalInterestEarned)}`
+            "
+          />
+          <span
+            v-text="
+              `End Balance: ${new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              }).format(result.endBalance)}`
+            "
+          />
+        </div>
+      </li>
+    </ul>
   </div>
 </template>
 
 <script>
-export default {}
+export default {
+  name: 'Index',
+
+  data() {
+    return {
+      startBalance: '',
+      rateOfReturn: '',
+      yearsToGrow: '',
+      store: [],
+      years: [],
+    }
+  },
+
+  watch: {
+    startBalance(value) {
+      if (value && this.rateOfReturn) this.initializeStore()
+    },
+
+    rateOfReturn(value) {
+      if (value && this.startBalance) this.initializeStore()
+    },
+  },
+
+  methods: {
+    initializeStore() {
+      this.$emit(
+        'store-initialized',
+        this.calculate(
+          parseFloat(this.startBalance),
+          parseFloat(this.rateOfReturn)
+        )
+      )
+    },
+
+    generateYearsRange() {
+      const startYear = new Date().getFullYear() + 1
+      const endYear = startYear + parseInt(this.yearsToGrow) - 1
+
+      for (let year = startYear; year < endYear; year++) {
+        this.years.push(year)
+      }
+      this.$emit('years-generated', this.years.length)
+    },
+
+    calculate(amount, rate, interest, year = new Date().getFullYear()) {
+      const interestEarned = (amount / 100) * this.rateOfReturn
+      const endBalance = amount + interestEarned
+      const totalInterestEarned = interest
+        ? endBalance - amount + interest
+        : endBalance - amount
+      const startBalance = this.startBalance
+
+      this.store.push({
+        interest,
+        previousEndBalance: amount,
+        startBalance,
+        interestEarned,
+        totalInterestEarned,
+        endBalance,
+        year,
+      })
+    },
+
+    onSubmit() {
+      this.generateYearsRange()
+      this.years.forEach((year, index) => {
+        this.calculate(
+          this.store[index].endBalance,
+          this.rateOfReturn,
+          this.store[index].totalInterestEarned,
+          year
+        )
+      })
+    },
+  },
+}
 </script>
-
-<style>
-/* Sample `apply` at-rules with Tailwind CSS
-.container {
-@apply min-h-screen flex justify-center items-center text-center mx-auto;
-}
-*/
-.container {
-  margin: 0 auto;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-.title {
-  font-family: 'Quicksand', 'Source Sans Pro', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  display: block;
-  font-weight: 300;
-  font-size: 100px;
-  color: #35495e;
-  letter-spacing: 1px;
-}
-
-.subtitle {
-  font-weight: 300;
-  font-size: 42px;
-  color: #526488;
-  word-spacing: 5px;
-  padding-bottom: 15px;
-}
-
-.links {
-  padding-top: 15px;
-}
-</style>
